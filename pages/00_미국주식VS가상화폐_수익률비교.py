@@ -70,6 +70,7 @@ fig.update_layout(
 st.plotly_chart(fig)
 
 # 선택: 누적 투자금, 현재 평가금액도 출력
+# 누적 투자 및 평가 금액 비교 표
 st.subheader("누적 투자 및 평가 금액 비교")
 summary = pd.DataFrame({
     "종목": ["SKYY", "BTC"],
@@ -81,9 +82,33 @@ summary = pd.DataFrame({
         round(skyy_result["PortfolioValue"].iloc[-1], 2),
         round(btc_result["PortfolioValue"].iloc[-1], 2),
     ],
+    "수익 금액 ($)": [
+        round(skyy_result["Profit"].iloc[-1], 2),
+        round(btc_result["Profit"].iloc[-1], 2),
+    ],
     "총 수익률 (%)": [
         round(skyy_result["ReturnRate"].iloc[-1], 2),
         round(btc_result["ReturnRate"].iloc[-1], 2),
     ]
 })
 st.dataframe(summary)
+
+# 📊 수익 금액 막대그래프 시각화
+st.subheader("수익 금액 막대그래프 비교")
+
+fig_bar = go.Figure(data=[
+    go.Bar(name='수익 금액 ($)',
+           x=summary["종목"],
+           y=summary["수익 금액 ($)"],
+           text=summary["수익 금액 ($)"],
+           textposition="outside")
+])
+
+fig_bar.update_layout(
+    yaxis_title="수익 금액 ($)",
+    xaxis_title="종목",
+    title="자산별 수익 금액 비교",
+    showlegend=False
+)
+
+st.plotly_chart(fig_bar)
