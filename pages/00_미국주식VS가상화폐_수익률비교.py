@@ -7,6 +7,15 @@ from datetime import datetime
 
 st.title("DCA 수익률 비교: SKYY vs Bitcoin (BTC)")
 
+st.markdown("""
+### 📈 종목 소개
+- **SKYY**: First Trust Cloud Computing ETF.  
+  클라우드 컴퓨팅 산업에 투자하는 ETF로, 주요 기술 기업(예: Amazon, Microsoft, Google 등)의 클라우드 사업 성장에 따라 수익이 연동됩니다.
+
+- **Bitcoin (BTC)**: 가장 널리 알려진 디지털 자산이자 암호화폐입니다.  
+  중앙은행이나 정부의 개입 없이 블록체인 기술 기반으로 운영되며, 높은 변동성과 수익 잠재력으로 주목받고 있습니다.
+""")
+
 START_DATE = "2024-05-01"
 END_DATE = "2025-05-01"
 INVEST_AMOUNT = 10  # 하루 투자 금액
