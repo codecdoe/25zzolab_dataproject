@@ -18,19 +18,19 @@ def get_price_data(ticker):
     df.rename(columns={"Close": ticker}, inplace=True)
     return df
 
-# 수익률 계산 함수
-def simulate_dca(prices: pd.Series):
-    df = prices.copy()
-    df = df.to_frame(name="Price")
-    df["Date"] = df.index
+def simulate_dca(df: pd.DataFrame):
+    df = df.copy()
     df["Investment"] = INVEST_AMOUNT
-    df["Shares"] = df["Investment"] / df["Price"]
+    df["Shares"] = df["Investment"] / df.iloc[:, 0]  # 첫 번째 컬럼이 가격
     df["TotalShares"] = df["Shares"].cumsum()
     df["TotalInvested"] = df["Investment"].cumsum()
-    df["PortfolioValue"] = df["TotalShares"] * df["Price"]
+    df["PortfolioValue"] = df["TotalShares"] * df.iloc[:, 0]
     df["Profit"] = df["PortfolioValue"] - df["TotalInvested"]
     df["ReturnRate"] = df["Profit"] / df["TotalInvested"] * 100
+    df["Date"] = df.index
     return df
+
+
 
 # 데이터 수집
 skyy_data = get_price_data("SKYY")
