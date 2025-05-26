@@ -2,3 +2,5 @@ folium
 streamlit_folium
 yfinance
 plotly
+streamlit
+pandas
