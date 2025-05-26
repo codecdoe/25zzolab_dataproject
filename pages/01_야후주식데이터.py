@@ -29,28 +29,38 @@ selected_companies = st.multiselect("📌 보고 싶은 기업을 선택하세�
 end_date = datetime.today()
 start_date = end_date - timedelta(days=365)
 
-# 데이터 가져오기
+
+# 데이터 가져오기 + 유효성 검사 추가
 st.info("💡 주가 데이터를 불러오는 데 시간이 조금 걸릴 수 있습니다.")
 data = {}
 for name in selected_companies:
     ticker = companies[name]
     stock_data = yf.download(ticker, start=start_date, end=end_date)
-    data[name] = stock_data['Close']
 
-# 데이터프레임 통합
-df = pd.DataFrame(data)
+    # 데이터가 비어있지 않은 경우에만 추가
+    if not stock_data.empty:
+        data[name] = stock_data['Close']
+    else:
+        st.warning(f"⚠️ {name} ({ticker})의 데이터를 불러올 수 없습니다.")
 
-# Plotly 시각화
-fig = go.Figure()
-for company in df.columns:
-    fig.add_trace(go.Scatter(x=df.index, y=df[company], mode='lines', name=company))
+# 데이터 유효성 확인
+if data:
+    df = pd.DataFrame(data)
 
-fig.update_layout(
-    title="최근 1년간 주가 변화 (종가 기준)",
-    xaxis_title="날짜",
-    yaxis_title="주가 (USD)",
-    template="plotly_white",
-    hovermode="x unified"
-)
+    # Plotly 시각화
+    fig = go.Figure()
+    for company in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df[company], mode='lines', name=company))
 
-st.plotly_chart(fig, use_container_width=True)
+    fig.update_layout(
+        title="최근 1년간 주가 변화 (종가 기준)",
+        xaxis_title="날짜",
+        yaxis_title="주가 (USD)",
+        template="plotly_white",
+        hovermode="x unified"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.error("❌ 선택한 기업들의 주가 데이터를 가져올 수 없습니다.")
+
