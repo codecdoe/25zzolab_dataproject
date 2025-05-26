@@ -80,7 +80,7 @@ summary = pd.DataFrame({
     ]
 })
 st.dataframe(summary)
-
+ 
 '''
 import streamlit as st
 import yfinance as yf
