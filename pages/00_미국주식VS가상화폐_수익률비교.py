@@ -2,77 +2,87 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
+from datetime import datetime
 
-st.set_page_config(page_title="미국주식 vs 가상화폐 수익률 비교", layout="wide")
+st.title("DCA 수익률 비교: SKYY vs Bitcoin (BTC)")
 
-st.title("💵 미국 주식 vs 💰 가상화폐 수익률 비교 (DCA 기준)")
+START_DATE = "2024-05-01"
+END_DATE = "2025-05-01"
+INVEST_AMOUNT = 10  # 하루 투자 금액
 
-# 비교할 자산 목록
-assets = {
-    "Apple (AAPL)": "AAPL",
-    "Tesla (TSLA)": "TSLA",
-    "Bitcoin (BTC-USD)": "BTC-USD",
-    "Ethereum (ETH-USD)": "ETH-USD"
-}
+# 다운로드
+@st.cache_data
+def get_price_data(ticker):
+    df = yf.download(ticker, start=START_DATE, end=END_DATE)
+    df = df[["Close"]].dropna()
+    df.rename(columns={"Close": ticker}, inplace=True)
+    return df
 
-selected_assets = st.multiselect("비교할 자산 선택:", list(assets.keys()), default=list(assets.keys()))
+# 수익률 계산 함수
+def simulate_dca(prices: pd.Series):
+    df = prices.copy()
+    df = df.to_frame(name="Price")
+    df["Date"] = df.index
+    df["Investment"] = INVEST_AMOUNT
+    df["Shares"] = df["Investment"] / df["Price"]
+    df["TotalShares"] = df["Shares"].cumsum()
+    df["TotalInvested"] = df["Investment"].cumsum()
+    df["PortfolioValue"] = df["TotalShares"] * df["Price"]
+    df["Profit"] = df["PortfolioValue"] - df["TotalInvested"]
+    df["ReturnRate"] = df["Profit"] / df["TotalInvested"] * 100
+    return df
 
-# 기간 선택
-end_date = datetime.today()
-start_date = end_date - timedelta(days=365)
+# 데이터 수집
+skyy_data = get_price_data("SKYY")
+btc_data = get_price_data("BTC-USD")
 
-# 매월 투자금
-monthly_investment = st.slider("매월 투자금 (USD)", 10, 1000, 100, step=10)
+# 공통 날짜로 정렬
+common_dates = skyy_data.index.intersection(btc_data.index)
+skyy_data = skyy_data.loc[common_dates]
+btc_data = btc_data.loc[common_dates]
 
-# 주가 및 가격 데이터 수집
-st.info("📦 데이터를 불러오는 중입니다...")
-data = {}
-for name, ticker in assets.items():
-    df = yf.download(ticker, start=start_date, end=end_date, interval="1d")
-    if not df.empty:
-        df = df.resample('M').last()  # 월별 마지막 날짜 기준
-        data[name] = df['Close']
-    else:
-        st.warning(f"{name} 의 데이터를 가져오지 못했습니다.")
+# 수익률 계산
+skyy_result = simulate_dca(skyy_data["SKYY"])
+btc_result = simulate_dca(btc_data["BTC-USD"])
 
-# 💹 수익률 계산 함수 (DCA 방식)
-def simulate_dca(prices):
-    prices = prices.dropna()
-    prices = prices[prices > 0]
+# Plotly 시각화
+fig = go.Figure()
 
-    total_invested = len(prices) * monthly_investment
-    total_shares = (monthly_investment / prices).sum()
-    final_value = total_shares * prices.iloc[-1]
+fig.add_trace(go.Scatter(
+    x=skyy_result["Date"], y=skyy_result["ReturnRate"],
+    mode="lines", name="SKYY 수익률"
+))
 
-    return {
-        "투자원금": total_invested,
-        "최종가치": round(final_value, 2),
-        "수익률": round((final_value - total_invested) / total_invested * 100, 2)
-    }
+fig.add_trace(go.Scatter(
+    x=btc_result["Date"], y=btc_result["ReturnRate"],
+    mode="lines", name="Bitcoin 수익률"
+))
 
-# 결과 계산
-if data:
-    results = {name: simulate_dca(prices) for name, prices in data.items()}
-    df_result = pd.DataFrame(results).T
-    df_result = df_result.rename(columns={"투자원금": "💸 투자원금", "최종가치": "📈 최종가치", "수익률": "📊 수익률 (%)"})
+fig.update_layout(
+    title="2024-05-01 ~ 2025-05-01 적립식 투자 수익률 비교 (매일 $10)",
+    xaxis_title="날짜",
+    yaxis_title="수익률 (%)",
+    legend_title="자산",
+    hovermode="x unified"
+)
 
-    st.subheader("📊 수익률 비교 표")
-    st.dataframe(df_result)
+st.plotly_chart(fig)
 
-    # 시각화
-    fig = go.Figure()
-    for name, prices in data.items():
-        fig.add_trace(go.Scatter(x=prices.index, y=prices, mode="lines", name=name))
-
-    fig.update_layout(
-        title="자산별 가격 변화 (최근 1년)",
-        xaxis_title="날짜",
-        yaxis_title="가격 (USD)",
-        hovermode="x unified",
-        template="plotly_white"
-    )
-    st.plotly_chart(fig, use_container_width=True)
-
-else:
-    st.error("❌ 데이터를 불러올 수 없습니다. 선택한 자산을 다시 확인해주세요.")
+# 선택: 누적 투자금, 현재 평가금액도 출력
+st.subheader("누적 투자 및 평가 금액 비교")
+summary = pd.DataFrame({
+    "종목": ["SKYY", "BTC"],
+    "총 투자금 ($)": [
+        round(skyy_result["TotalInvested"].iloc[-1], 2),
+        round(btc_result["TotalInvested"].iloc[-1], 2),
+    ],
+    "현재 평가금액 ($)": [
+        round(skyy_result["PortfolioValue"].iloc[-1], 2),
+        round(btc_result["PortfolioValue"].iloc[-1], 2),
+    ],
+    "총 수익률 (%)": [
+        round(skyy_result["ReturnRate"].iloc[-1], 2),
+        round(btc_result["ReturnRate"].iloc[-1], 2),
+    ]
+})
+st.dataframe(summary)
